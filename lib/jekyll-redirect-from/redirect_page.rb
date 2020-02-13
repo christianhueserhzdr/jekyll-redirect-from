@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'uri'
+
 module JekyllRedirectFrom
   # Specialty page which implements the redirect path logic
   class RedirectPage < Jekyll::Page
@@ -43,13 +45,26 @@ module JekyllRedirectFrom
     # from - the relative path to the redirect page
     # to   - the relative path or absolute URL to the redirect target
     def set_paths(from, to)
+      new_uri_to = to
+      if ! to.match?("^https?://[a-zA-Z0-9:._-]+/")
+          uri_to = URI(to)
+          uri_to_host = uri_to.host
+          uri_to_prod = URI("https://software.hifis.net/")
+          uri_to_prod_host = uri_to_prod.host
+          if uri_to_host.nil? || uri_to_host != uri_to_prod_host
+            new_uri_to = uri_to.to_s.sub! uri_to.to_s.partition("https?://[a-zA-Z0-9:._-]+/")[1], "http://localhost:4000"
+          else
+            new_uri_to = absolute_url(to)
+          end
+      end
+
       @context ||= context
       from = ensure_leading_slash(from)
       data.merge!(
         "permalink" => from,
         "redirect"  => {
           "from" => from,
-          "to"   => %r!^https?://!.match?(to) ? to : absolute_url(to),
+          "to"   => new_uri_to,
         }
       )
     end
